@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ClickMoz - Ganhe Dinheiro</title>
+<style>
+  /* Reset básico */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f4f7;
+    margin: 0;
+    padding: 0 10px;
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .container {
+    background: white;
+    max-width: 900px;
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgb(0 0 0 / 0.1);
+    padding: 30px 40px;
+  }
+  h1 {
+    text-align: center;
+    color: #ffcc00;
+    margin-bottom: 20px;
+    font-weight: 700;
+  }
+  .forms {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  form {
+    flex: 1 1 300px;
+    background: #fafafa;
+    padding: 20px 25px;
+    border-radius: 8px;
+    box-shadow: 0 0 7px rgb(0 0 0 / 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  form h2 {
+    margin-top: 0;
+    color: #444;
+    text-align: center;
+    font-weight: 600;
+  }
+  input[type="text"],
+  input[type="password"] {
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    transition: border-color 0.3s;
+  }
+  input[type="text"]:focus,
+  input[type="password"]:focus {
+    outline: none;
+    border-color: #ffcc00;
+  }
+  button {
+    background-color: #ffcc00;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #222;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #e6b800;
+  }
+  .mensagem {
+    font-weight: 600;
+    font-size: 14px;
+    min-height: 18px;
+    color: #cc0000;
+    text-align: center;
+  }
+  .mensagem.sucesso {
+    color: #007700;
+  }
+  #painel {
+    margin-top: 30px;
+    background: #fff9db;
+    border: 2px solid #ffcc00;
+    padding: 25px;
+    border-radius: 8px;
+    text-align: center;
+    display: none;
+  }
+  #painel h2 {
+    margin-top: 0;
+    color: #b38600;
+  }
+  #painel p {
+    font-size: 18px;
+    margin: 15px 0;
+  }
+  #btnLogout {
+    margin-top: 20px;
+    background-color: #cc0000;
+    color: white;
+    font-weight: 700;
+  }
+  #btnLogout:hover {
+    background-color: #990000;
+  }
+
+  @media(max-width: 700px) {
+    .forms {
+      flex-direction: column;
+      gap: 20px;
+    }
+  }
+</style>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1>ClickMoz - Ganhe Dinheiro</h1>
+
+  <div class="forms">
+    <form id="cadastroForm" autocomplete="off">
+      <h2>Criar Conta</h2>
+      <input type="text" id="numero" placeholder="Número (ex: 84xxxxxxx)" required />
+      <input type="password" id="senha" placeholder="Senha (mínimo 5 caracteres)" required />
+      <input type="password" id="confirmarSenha" placeholder="Confirmar Senha" required />
+      <button type="submit">Criar Conta</button>
+      <div id="mensagemCadastro" class="mensagem"></div>
+    </form>
+
+    <form id="loginForm" autocomplete="off">
+      <h2>Login</h2>
+      <input type="text" id="loginNumero" placeholder="Número (ex: 84xxxxxxx)" required />
+      <input type="password" id="loginSenha" placeholder="Senha" required />
+      <button type="submit">Entrar</button>
+      <div id="mensagemLogin" class="mensagem"></div>
+    </form>
+  </div>
+
+  <div id="painel">
+    <h2>Bem-vindo ao ClickMoz!</h2>
+    <p>Seu saldo atual: <strong><span id="saldo"></span> MT</strong></p>
+    <p>Em breve você poderá ver tarefas para ganhar dinheiro aqui.</p>
+    <button id="btnLogout">Sair</button>
+  </div>
+</div>
+
+<script>
+  // Configuração Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyD70Uto5Z8gAHclBNm9peW7FKd4pR1-sZA",
+    authDomain: "clickmoz-e7e6b.firebaseapp.com",
+    projectId: "clickmoz-e7e6b",
+    storageBucket: "clickmoz-e7e6b.appspot.com",
+    messagingSenderId: "57111705800",
+    appId: "1:57111705800:web:462e7dd890f237e99f8dfd",
+    measurementId: "G-BSBT5G0WGY"
+  };
+
+  // Inicializar Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Função para validar número moçambicano
+  function validarNumero(numero) {
+    return /^(82|83|84|85|86|87)[0-9]{7}$/.test(numero);
+  }
+
+  // Cadastro
+  const cadastroForm = document.getElementById("cadastroForm");
+  const mensagemCadastro = document.getElementById("mensagemCadastro");
+
+  cadastroForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const numero = document.getElementById("numero").value.trim();
+    const senha = document.getElementById("senha").value;
+    const confirmarSenha = document.getElementById("confirmarSenha").value;
+
+    mensagemCadastro.textContent = "";
+    mensagemCadastro.classList.remove("sucesso");
+
+    if (!validarNumero(numero)) {
+      mensagemCadastro.textContent = "Número inválido. Use um número moçambicano (ex: 84xxxxxxx).";
+      return;
+    }
+    if (senha.length < 5) {
+      mensagemCadastro.textContent = "A senha deve ter no mínimo 5 caracteres.";
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      mensagemCadastro.textContent = "As senhas não coincidem.";
+      return;
+    }
+
+    try {
+      const userDoc = await db.collection("usuarios").doc(numero).get();
+      if (userDoc.exists) {
+        mensagemCadastro.textContent = "Número já cadastrado. Faça login.";
+        return;
+      }
+      await db.collection("usuarios").doc(numero).set({
+        numero,
+        senha,
+        saldo: 0,
+      });
+      mensagemCadastro.textContent = "Conta criada com sucesso!";
+      mensagemCadastro.classList.add("sucesso");
+      cadastroForm.reset();
+    } catch (err) {
+      mensagemCadastro.textContent = "Erro ao criar conta. Tente novamente.";
+      console.error(err);
+    }
+  });
+
+  // Login
+  const loginForm = document.getElementById("loginForm");
+  const mensagemLogin = document.getElementById("mensagemLogin");
+  const painel = document.getElementById("painel");
+
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const numero = document.getElementById("loginNumero").value.trim();
+    const senha = document.getElementById("loginSenha").value;
+
+    mensagemLogin.textContent = "";
+    mensagemLogin.classList.remove("sucesso");
+
+    if (!validarNumero(numero)) {
+      mensagemLogin.textContent = "Número inválido. Use um número moçambicano (ex: 84xxxxxxx).";
+      return;
+    }
+    if (senha.length < 5) {
+      mensagemLogin.textContent = "Senha incorreta.";
+      return;
+    }
+
+    try {
+      const userDoc = await db.collection("usuarios").doc(numero).get();
+      if (!userDoc.exists) {
+        mensagemLogin.textContent = "Usuário não encontrado.";
+        return;
+      }
+      const data = userDoc.data();
+      if (data.senha !== senha) {
+        mensagemLogin.textContent = "Senha incorreta.";
+        return;
+      }
+
+      mensagemLogin.textContent = "Login bem-sucedido!";
+      mensagemLogin.classList.add("sucesso");
+
+      // Esconder os formulários e mostrar painel
+      cadastroForm.style.display = "none";
+      loginForm.style.display = "none";
+      painel.style.display = "block";
+
+      document.getElementById("saldo").textContent = data.saldo;
+
+      // Guardar o usuário logado no localStorage (opcional)
+      localStorage.setItem("usuarioLogado", numero);
+    } catch (err) {
+      mensagemLogin.textContent = "Erro ao fazer login. Tente novamente.";
+      console.error(err);
+    }
+  });
+
+  // Logout
+  document.getElementById("btnLogout").addEventListener("click", () => {
+    // Limpar localStorage e voltar para formulários
+    localStorage.removeItem("usuarioLogado");
+    cadastroForm.style.display = "flex";
+    loginForm.style.display = "flex";
+    painel.style.display = "none";
+
+    mensagemLogin.textContent = "";
+    mensagemCadastro.textContent = "";
+    cadastroForm.reset();
+    loginForm.reset();
+  });
+
+  // Persistir login se quiser (opcional)
+  window.addEventListener("load", async () => {
+    const usuario = localStorage.getItem("usuarioLogado");
+    if (usuario) {
+      try {
+        const userDoc = await db.collection("usuarios").doc(usuario).get();
+        if (userDoc.exists) {
+          const data = userDoc.data();
+          cadastroForm.style.display = "none";
+          loginForm.style.display = "none";
+          painel.style.display = "block";
+          document.getElementById("saldo").textContent = data.saldo;
+        } else {
+          localStorage.removeItem("usuarioLogado");
+        }
+      } catch {
+        localStorage.removeItem("usuarioLogado");
+      }
+    }
+  });
+</script>
+
+</body>
+</html>
